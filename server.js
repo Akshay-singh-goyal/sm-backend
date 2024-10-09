@@ -18,6 +18,14 @@ mongoose.connect('mongodb+srv://akshaysinghrajput702:skart123@cluster0.6pyfv.mon
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
+let visitorCount = 500;
+
+// Endpoint to increment and get visitor count
+app.get('/api/visitor-count', (req, res) => {
+    visitorCount++;
+    res.json({ count: visitorCount });
+});
+
 // Define Ticket Schema and Model
 const ticketSchema = new mongoose.Schema({
   ticketId: { type: String, required: true, unique: true },
