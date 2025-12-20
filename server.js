@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url);
 // CommonJS modules
 const connectDB = require("./config/db.js");
 const authRoutes = require("./routes/authRoutes.js"); // login + refresh token
-const adminRoutes = require("./routes/admin.js"); // admin protected routes
+// const adminRoutes = require("./routes/admin.js"); // admin protected routes
 
 dotenv.config();
 connectDB();
@@ -21,7 +21,7 @@ app.use(express.json());
 
 // ===== Routes =====
 app.use("/api/auth", authRoutes);        // login + refresh token
-app.use("/api/admin", adminRoutes);       // admin routes
+// app.use("/api/admin", adminRoutes);       // admin routes
 
 
 
