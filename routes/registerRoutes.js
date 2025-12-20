@@ -1,7 +1,7 @@
 const express = require("express");
 const Registration = require("../models/Registration");
 const jwt = require("jsonwebtoken");
-const sendEmail = require("../utils/sendotp"); // Nodemailer helper
+const sendEmail = require("../utils/sendOtp"); // Nodemailer helper
 
 const router = express.Router();
 
