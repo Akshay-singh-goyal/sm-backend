@@ -1,13 +1,10 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
 const UserSchema = new mongoose.Schema(
   {
     // Basic Info
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+    name: { type: String, required: true, trim: true },
 
     email: {
       type: String,
@@ -25,10 +22,7 @@ const UserSchema = new mongoose.Schema(
       trim: true,
     },
 
-    password: {
-      type: String,
-      required: true,
-    },
+    password: { type: String, required: true },
 
     role: {
       type: String,
@@ -45,14 +39,8 @@ const UserSchema = new mongoose.Schema(
     },
 
     // Learning / Purchases
-    completedCourses: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "Course" },
-    ],
-
-    purchasedBooks: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "Book" },
-    ],
-
+    completedCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: "Course" }],
+    purchasedBooks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Book" }],
     downloadHistory: [
       {
         fileId: String,
@@ -60,52 +48,37 @@ const UserSchema = new mongoose.Schema(
         date: { type: Date, default: Date.now },
       },
     ],
+    savedNotes: [{ title: String, url: String }],
+    wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: "Course" }],
+    paymentHistory: [{ type: mongoose.Schema.Types.ObjectId, ref: "Payment" }],
 
-    savedNotes: [
-      {
-        title: String,
-        url: String,
-      },
-    ],
+    // Auth & Security
+    refreshToken: { type: String, default: null },
+    loginAttempts: { type: Number, default: 0 },
+    lockUntil: { type: Number, default: null },
 
-    wishlist: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "Course" },
-    ],
-
-    paymentHistory: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "Payment" },
-    ],
-
-    // 🔐 Auth & Security
-    refreshToken: {
-      type: String,
-      default: null,
-    },
-
-    loginAttempts: {
-      type: Number,
-      default: 0,
-    },
-
-    lockUntil: {
-      type: Number,
-      default: null,
-    },
-
-    // User Settings
+    // Settings
     settings: {
       notifications: { type: Boolean, default: true },
       darkMode: { type: Boolean, default: false },
     },
 
-    lastLogin: {
-      type: Date,
-      default: null,
-    },
+    lastLogin: { type: Date, default: null },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-module.exports = mongoose.model("User", UserSchema);
+// Password hashing middleware
+UserSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
+
+// Compare password method
+UserSchema.methods.matchPassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
+
+module.exports = mongoose.models.User || mongoose.model("User", UserSchema);
