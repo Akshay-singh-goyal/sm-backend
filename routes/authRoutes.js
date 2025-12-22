@@ -9,25 +9,42 @@ const router = express.Router();
 router.post("/register", async (req, res) => {
   const { name, email, mobile, password } = req.body;
 
-  if ((!email && !mobile) || !password || !name) {
+  if (!name || !email || !mobile || !password) {
     return res.status(400).json({ message: "All fields are required" });
   }
 
   try {
-    // Check if user already exists
-    const exists = await User.findOne({ $or: [{ email }, { mobile }] });
-    if (exists) return res.status(400).json({ message: "User already exists" });
+    const exists = await User.findOne({
+      $or: [{ email }, { mobile }],
+    });
 
-    // Hash password before saving
+    if (exists) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.create({ name, email, mobile, password: hashedPassword });
-    res.status(201).json({ message: "Registration successful", user });
+    const user = await User.create({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      mobile,
+      password: hashedPassword,
+    });
+
+    res.status(201).json({
+      message: "Registration successful",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+      },
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 // ===== LOGIN =====
 router.post("/login", async (req, res) => {
