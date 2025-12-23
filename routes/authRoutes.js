@@ -24,13 +24,11 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
     const user = await User.create({
       name: name.trim(),
       email: normalizedEmail,
       mobile,
-      password: hashedPassword,
+      password, // pre-save middleware will hash it
     });
 
     res.status(201).json({
@@ -39,6 +37,7 @@ router.post("/register", async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        mobile: user.mobile,
       },
     });
   } catch (err) {
@@ -49,44 +48,33 @@ router.post("/register", async (req, res) => {
 
 /* ================= LOGIN ================= */
 router.post("/login", async (req, res) => {
-  console.log("LOGIN ATTEMPT:", req.body);
   try {
+    console.log("LOGIN ATTEMPT:", req.body);
     const { email, mobile, password } = req.body;
 
     if ((!email && !mobile) || !password) {
-      return res.status(400).json({
-        message: "Email or Mobile and Password are required",
-      });
+      return res.status(400).json({ message: "Email or Mobile and Password required" });
     }
 
     let user;
+    if (email) user = await User.findOne({ email: email.trim().toLowerCase() });
+    else user = await User.findOne({ mobile });
 
-    if (email) {
-      user = await User.findOne({ email: email.trim().toLowerCase() });
-    } else {
-      user = await User.findOne({ mobile });
-    }
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-    if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-
-    // Account lock check
+    // Account lock
     if (user.lockUntil && user.lockUntil > Date.now()) {
-      return res.status(403).json({
-        message: "Account locked. Please try again later.",
-      });
+      return res.status(403).json({ message: "Account locked. Try later." });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
+    console.log("DB PASSWORD:", user.password);
+    console.log("PASSWORD MATCH:", isMatch);
+
     if (!isMatch) {
       user.loginAttempts = (user.loginAttempts || 0) + 1;
-
-      if (user.loginAttempts >= 5) {
-        user.lockUntil = Date.now() + 30 * 60 * 1000; // 30 mins
-      }
-
+      if (user.loginAttempts >= 5) user.lockUntil = Date.now() + 30 * 60 * 1000;
       await user.save();
       return res.status(400).json({ message: "Invalid credentials" });
     }
@@ -95,17 +83,9 @@ router.post("/login", async (req, res) => {
     user.loginAttempts = 0;
     user.lockUntil = undefined;
 
-    const accessToken = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "15m" }
-    );
-
-    const refreshToken = jwt.sign(
-      { id: user._id },
-      process.env.REFRESH_SECRET,
-      { expiresIn: "7d" }
-    );
+    // Tokens
+    const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "15m" });
+    const refreshToken = jwt.sign({ id: user._id }, process.env.REFRESH_SECRET, { expiresIn: "7d" });
 
     user.refreshToken = refreshToken;
     await user.save();
@@ -132,27 +112,15 @@ router.post("/login", async (req, res) => {
 router.post("/refresh-token", async (req, res) => {
   try {
     const { refreshToken } = req.body;
-
-    if (!refreshToken) {
-      return res.status(401).json({ message: "Refresh token required" });
-    }
+    if (!refreshToken) return res.status(401).json({ message: "Refresh token required" });
 
     const user = await User.findOne({ refreshToken });
-    if (!user) {
-      return res.status(403).json({ message: "Invalid refresh token" });
-    }
+    if (!user) return res.status(403).json({ message: "Invalid refresh token" });
 
     jwt.verify(refreshToken, process.env.REFRESH_SECRET, (err) => {
-      if (err) {
-        return res.status(403).json({ message: "Refresh token expired" });
-      }
+      if (err) return res.status(403).json({ message: "Refresh token expired" });
 
-      const newAccessToken = jwt.sign(
-        { id: user._id },
-        process.env.JWT_SECRET,
-        { expiresIn: "15m" }
-      );
-
+      const newAccessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "15m" });
       res.json({ accessToken: newAccessToken });
     });
   } catch (err) {
