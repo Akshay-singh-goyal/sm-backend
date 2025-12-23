@@ -9,7 +9,6 @@ const router = express.Router();
 router.post("/register", async (req, res) => {
   try {
     const { name, email, mobile, password } = req.body;
-
     if (!name || !email || !mobile || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -28,7 +27,7 @@ router.post("/register", async (req, res) => {
       name: name.trim(),
       email: normalizedEmail,
       mobile,
-      password, // pre-save middleware will hash it
+      password, // pre-save middleware will hash
     });
 
     res.status(201).json({
@@ -49,16 +48,15 @@ router.post("/register", async (req, res) => {
 /* ================= LOGIN ================= */
 router.post("/login", async (req, res) => {
   try {
-    console.log("LOGIN ATTEMPT:", req.body);
     const { email, mobile, password } = req.body;
 
     if ((!email && !mobile) || !password) {
       return res.status(400).json({ message: "Email or Mobile and Password required" });
     }
 
-    let user;
-    if (email) user = await User.findOne({ email: email.trim().toLowerCase() });
-    else user = await User.findOne({ mobile });
+    const user = email
+      ? await User.findOne({ email: email.trim().toLowerCase() })
+      : await User.findOne({ mobile });
 
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
@@ -68,13 +66,11 @@ router.post("/login", async (req, res) => {
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
-
-    console.log("DB PASSWORD:", user.password);
-    console.log("PASSWORD MATCH:", isMatch);
-
     if (!isMatch) {
       user.loginAttempts = (user.loginAttempts || 0) + 1;
-      if (user.loginAttempts >= 5) user.lockUntil = Date.now() + 30 * 60 * 1000;
+      if (user.loginAttempts >= 5) {
+        user.lockUntil = Date.now() + 30 * 60 * 1000; // 30 mins lock
+      }
       await user.save();
       return res.status(400).json({ message: "Invalid credentials" });
     }
@@ -83,7 +79,6 @@ router.post("/login", async (req, res) => {
     user.loginAttempts = 0;
     user.lockUntil = undefined;
 
-    // Tokens
     const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "15m" });
     const refreshToken = jwt.sign({ id: user._id }, process.env.REFRESH_SECRET, { expiresIn: "7d" });
 
