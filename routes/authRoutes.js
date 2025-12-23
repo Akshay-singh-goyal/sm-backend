@@ -49,6 +49,7 @@ router.post("/register", async (req, res) => {
 
 /* ================= LOGIN ================= */
 router.post("/login", async (req, res) => {
+  console.log("LOGIN ATTEMPT:", req.body);
   try {
     const { email, mobile, password } = req.body;
 
