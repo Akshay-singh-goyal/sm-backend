@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 
 const router = express.Router();
 
-// ===== Middleware: Auth =====
+/* ================= AUTH MIDDLEWARE ================= */
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
@@ -13,6 +13,11 @@ const authMiddleware = (req, res, next) => {
   }
 
   const accessToken = authHeader.split(" ")[1];
+
+  if (!process.env.JWT_SECRET) {
+    console.error("JWT_SECRET missing in env");
+    return res.status(500).json({ message: "Server configuration error" });
+  }
 
   try {
     const decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
@@ -24,7 +29,7 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-// ===== Get Registration Status =====
+/* ================= GET REGISTRATION STATUS ================= */
 router.get("/status/:batchId", authMiddleware, async (req, res) => {
   try {
     const registration = await Registration.findOne({
@@ -34,12 +39,12 @@ router.get("/status/:batchId", authMiddleware, async (req, res) => {
 
     res.json(registration || { registered: false });
   } catch (err) {
-    console.error(err);
+    console.error("Status Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// ===== Paid Registration =====
+/* ================= PAID REGISTRATION ================= */
 router.post("/", authMiddleware, async (req, res) => {
   const { batchId, transactionId, amount } = req.body;
 
@@ -72,12 +77,12 @@ router.post("/", authMiddleware, async (req, res) => {
       registration: newReg,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Paid Registration Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// ===== Unpaid Registration =====
+/* ================= UNPAID REGISTRATION ================= */
 router.post("/unpaid", authMiddleware, async (req, res) => {
   const { batchId } = req.body;
 
@@ -109,17 +114,17 @@ router.post("/unpaid", authMiddleware, async (req, res) => {
       registration: newReg,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Unpaid Registration Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// ===== Unpaid Slot Booking (NO EMAIL / OTP) =====
+/* ================= UNPAID SLOT BOOKING ================= */
 router.post("/unpaid/slot", authMiddleware, async (req, res) => {
   const { batchId, slot } = req.body;
 
   try {
-    let reg = await Registration.findOne({
+    const reg = await Registration.findOne({
       userId: req.userId,
       batchId,
       paymentType: "unpaid",
@@ -140,17 +145,17 @@ router.post("/unpaid/slot", authMiddleware, async (req, res) => {
       registration: reg,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Slot Booking Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// ===== Submit Test (Unpaid Flow) =====
+/* ================= SUBMIT TEST ================= */
 router.post("/unpaid/test", authMiddleware, async (req, res) => {
   const { batchId, testScore } = req.body;
 
   try {
-    let reg = await Registration.findOne({
+    const reg = await Registration.findOne({
       userId: req.userId,
       batchId,
       paymentType: "unpaid",
@@ -168,17 +173,18 @@ router.post("/unpaid/test", authMiddleware, async (req, res) => {
       registration: reg,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Test Submit Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// ===== Admin Approval =====
+/* ================= ADMIN APPROVAL ================= */
+/* ⚠️ NOTE: This route should be protected by admin auth in future */
 router.post("/admin/approve/:regId", async (req, res) => {
   const { regId } = req.params;
 
   try {
-    let reg = await Registration.findById(regId);
+    const reg = await Registration.findById(regId);
     if (!reg)
       return res.status(404).json({ message: "Registration not found" });
 
@@ -191,18 +197,18 @@ router.post("/admin/approve/:regId", async (req, res) => {
       registration: reg,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Admin Approval Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// ===== Paid Course Fee Payment =====
+/* ================= COURSE PAYMENT ================= */
 router.post("/course/pay/:regId", authMiddleware, async (req, res) => {
   const { regId } = req.params;
   const { transactionId, amount } = req.body;
 
   try {
-    let reg = await Registration.findById(regId);
+    const reg = await Registration.findById(regId);
     if (!reg)
       return res.status(404).json({ message: "Registration not found" });
 
@@ -221,7 +227,7 @@ router.post("/course/pay/:regId", authMiddleware, async (req, res) => {
       registration: reg,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Course Payment Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
