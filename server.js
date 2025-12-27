@@ -8,6 +8,7 @@ const require = createRequire(import.meta.url);
 
 const connectDB = require("./config/db.js");
 const authRoutes = require("./routes/authRoutes.js");
+const registerRoutes = require("./routes/registerRoutes.js");
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ connectDB();
 
 /* ===== Routes ===== */
 app.use("/api/auth", authRoutes);
+app.use("/api/register",registerRoutes);
 
 /* ===== Health Check ===== */
 app.get("/", (req, res) => {
