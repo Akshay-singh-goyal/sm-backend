@@ -1,19 +1,25 @@
 const express = require("express");
 const Registration = require("../models/Registration");
-// const jwt = require("jsonwebToken");
+const jwt = require("jsonwebtoken");
 
 const router = express.Router();
 
 // ===== Middleware: Auth =====
 const authMiddleware = (req, res, next) => {
-  const accessToken = req.headers.authorization?.split(" ")[1];
-  if (!accessToken) return res.status(401).json({ message: "No accessToken provided" });
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "No accessToken provided" });
+  }
+
+  const accessToken = authHeader.split(" ")[1];
 
   try {
     const decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
     req.userId = decoded.id;
     next();
   } catch (err) {
+    console.error("JWT Error:", err.message);
     return res.status(401).json({ message: "Invalid accessToken" });
   }
 };
@@ -43,10 +49,11 @@ router.post("/", authMiddleware, async (req, res) => {
       batchId,
     });
 
-    if (existing)
+    if (existing) {
       return res
         .status(400)
         .json({ message: "You are already registered for this batch" });
+    }
 
     const newReg = await Registration.create({
       userId: req.userId,
@@ -80,10 +87,11 @@ router.post("/unpaid", authMiddleware, async (req, res) => {
       batchId,
     });
 
-    if (existing)
+    if (existing) {
       return res
         .status(400)
         .json({ message: "You are already registered for this batch" });
+    }
 
     const newReg = await Registration.create({
       userId: req.userId,
@@ -106,7 +114,7 @@ router.post("/unpaid", authMiddleware, async (req, res) => {
   }
 });
 
-// ===== Unpaid Slot Booking + Email Notifications =====
+// ===== Unpaid Slot Booking (NO EMAIL / OTP) =====
 router.post("/unpaid/slot", authMiddleware, async (req, res) => {
   const { batchId, slot } = req.body;
 
@@ -127,37 +135,10 @@ router.post("/unpaid/slot", authMiddleware, async (req, res) => {
     await reg.save();
     await reg.populate("userInfo", "name email mobile");
 
-    // ===== Schedule Emails =====
-    const slotTime = new Date(slot).getTime();
-    const now = Date.now();
-
-    const fiveMinBefore = slotTime - 5 * 60 * 1000;
-    const beforeDelay = fiveMinBefore - now;
-    const startDelay = slotTime - now;
-
-    // Email 5 minutes before test
-    if (beforeDelay > 0) {
-      setTimeout(() => {
-        sendEmail(
-          reg.userInfo.email,
-          "Test starting soon",
-          `Hello ${reg.userInfo.name}, your test will start in 5 minutes at ${new Date(slot).toLocaleString()}.`
-        );
-      }, beforeDelay);
-    }
-
-    // Email at test start
-    if (startDelay > 0) {
-      setTimeout(() => {
-        sendEmail(
-          reg.userInfo.email,
-          "Test Started",
-          `Hello ${reg.userInfo.name}, your test has started now. All the best!`
-        );
-      }, startDelay);
-    }
-
-    res.json({ message: "Slot booked. Emails scheduled.", registration: reg });
+    res.json({
+      message: "Slot booked successfully.",
+      registration: reg,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -175,13 +156,17 @@ router.post("/unpaid/test", authMiddleware, async (req, res) => {
       paymentType: "unpaid",
     });
 
-    if (!reg) return res.status(400).json({ message: "Registration not found" });
+    if (!reg)
+      return res.status(400).json({ message: "Registration not found" });
 
     reg.testScore = testScore;
     await reg.save();
     await reg.populate("userInfo", "name email mobile");
 
-    res.json({ message: "Test submitted. Await admin approval.", registration: reg });
+    res.json({
+      message: "Test submitted. Await admin approval.",
+      registration: reg,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -194,13 +179,17 @@ router.post("/admin/approve/:regId", async (req, res) => {
 
   try {
     let reg = await Registration.findById(regId);
-    if (!reg) return res.status(404).json({ message: "Registration not found" });
+    if (!reg)
+      return res.status(404).json({ message: "Registration not found" });
 
     reg.adminApproved = true;
     await reg.save();
     await reg.populate("userInfo", "name email mobile");
 
-    res.json({ message: "Registration approved by admin", registration: reg });
+    res.json({
+      message: "Registration approved by admin",
+      registration: reg,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -214,7 +203,8 @@ router.post("/course/pay/:regId", authMiddleware, async (req, res) => {
 
   try {
     let reg = await Registration.findById(regId);
-    if (!reg) return res.status(404).json({ message: "Registration not found" });
+    if (!reg)
+      return res.status(404).json({ message: "Registration not found" });
 
     if (!reg.adminApproved)
       return res.status(400).json({ message: "Admin has not approved yet" });
@@ -226,7 +216,10 @@ router.post("/course/pay/:regId", authMiddleware, async (req, res) => {
     await reg.save();
     await reg.populate("userInfo", "name email mobile");
 
-    res.json({ message: "Course payment successful", registration: reg });
+    res.json({
+      message: "Course payment successful",
+      registration: reg,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
