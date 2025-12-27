@@ -1,6 +1,6 @@
 const express = require("express");
 const Registration = require("../models/Registration");
-const jwt = require("jsonwebToken");
+// const jwt = require("jsonwebToken");
 
 const router = express.Router();
 
