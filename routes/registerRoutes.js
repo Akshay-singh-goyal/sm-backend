@@ -3,9 +3,9 @@ const router = express.Router();
 const Registration = require("../models/Registration");
 const auth = require("../middleware/auth");
 
-/* =========================
-   PAID COURSE REGISTRATION
-   ========================= */
+/* =====================================
+   PAID COURSE REGISTRATION (₹2000)
+===================================== */
 router.post("/", auth, async (req, res) => {
   try {
     const { batchId, transactionId } = req.body;
@@ -14,28 +14,24 @@ router.post("/", auth, async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // prevent duplicate registration
-    const already = await Registration.findOne({
+    const existing = await Registration.findOne({
       userId: req.user._id,
       batchId,
     });
 
-    if (already) {
+    if (existing) {
       return res.status(400).json({ message: "Already registered" });
     }
 
     await Registration.create({
       userId: req.user._id,
       batchId,
-
       paymentType: "paid",
 
-      // registration payment
       registrationFeePaid: true,
-      registrationTransactionId: transactionId,
-
-      // course payment
       courseFeePaid: true,
+
+      registrationTransactionId: transactionId,
       courseTransactionId: transactionId,
 
       transactionId,
@@ -51,23 +47,23 @@ router.post("/", auth, async (req, res) => {
   }
 });
 
-/* =========================
-   UNPAID COURSE REGISTRATION
-   ========================= */
+/* =====================================
+   UNPAID REGISTRATION (₹200 REG FEE)
+===================================== */
 router.post("/unpaid", auth, async (req, res) => {
   try {
-    const { batchId } = req.body;
+    const { batchId, transactionId } = req.body;
 
-    if (!batchId) {
-      return res.status(400).json({ message: "Batch ID required" });
+    if (!batchId || !transactionId) {
+      return res.status(400).json({ message: "BatchId & transactionId required" });
     }
 
-    const already = await Registration.findOne({
+    const existing = await Registration.findOne({
       userId: req.user._id,
       batchId,
     });
 
-    if (already) {
+    if (existing) {
       return res.status(400).json({ message: "Already registered" });
     }
 
@@ -76,15 +72,18 @@ router.post("/unpaid", auth, async (req, res) => {
       batchId,
       paymentType: "unpaid",
 
-      registrationFeePaid: false,
-      courseFeePaid: false,
+      registrationFeePaid: false, // admin will verify
+      registrationTransactionId: transactionId,
 
+      courseFeePaid: false,
       adminApproved: false,
-      testScore: null,
+
+      transactionId,
     });
 
     res.json({
-      message: "Unpaid registration successful. Test will be scheduled.",
+      message: "Registration fee submitted. Waiting for admin approval.",
+      status: "WAITING",
     });
   } catch (err) {
     console.error(err);
@@ -92,28 +91,66 @@ router.post("/unpaid", auth, async (req, res) => {
   }
 });
 
-/* =========================
+/* =====================================
    CHECK REGISTRATION STATUS
-   ========================= */
+===================================== */
 router.get("/status/:batchId", auth, async (req, res) => {
   try {
     const reg = await Registration.findOne({
       userId: req.user._id,
       batchId: req.params.batchId,
-    }).populate("userInfo");
+    });
 
     if (!reg) {
-      return res.json({ registered: false });
+      return res.json({ status: "NOT_REGISTERED" });
     }
 
-    res.json({
-      registered: true,
-      paymentType: reg.paymentType,
-      adminApproved: reg.adminApproved,
-      courseFeePaid: reg.courseFeePaid,
-      testScore: reg.testScore,
-    });
+    if (!reg.adminApproved) {
+      return res.json({ status: "WAITING" });
+    }
+
+    if (reg.paymentType === "unpaid" && !reg.testSlot) {
+      return res.json({ status: "APPROVED_WAITING_TEST" });
+    }
+
+    if (reg.testSlot) {
+      return res.json({
+        status: "TEST_SCHEDULED",
+        testSlot: reg.testSlot,
+      });
+    }
+
+    res.json({ status: "UNKNOWN" });
   } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+/* =====================================
+   SET TEST SLOT (UNPAID FLOW)
+===================================== */
+router.post("/test-slot", auth, async (req, res) => {
+  try {
+    const { batchId, testSlot } = req.body;
+
+    const reg = await Registration.findOne({
+      userId: req.user._id,
+      batchId,
+      paymentType: "unpaid",
+      adminApproved: true,
+    });
+
+    if (!reg) {
+      return res.status(400).json({ message: "Not eligible for test" });
+    }
+
+    reg.testSlot = testSlot;
+    await reg.save();
+
+    res.json({ message: "Test slot booked successfully" });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 });
