@@ -27,7 +27,7 @@ connectDB();
 
 /* ===== Routes ===== */
 app.use("/api/auth", authRoutes);
-app.use("/api/register",registerRoutes);
+router.post("/register", registerUser);
 
 /* ===== Health Check ===== */
 app.get("/", (req, res) => {
