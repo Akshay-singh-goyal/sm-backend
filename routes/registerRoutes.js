@@ -35,11 +35,12 @@ router.post("/", auth, async (req, res) => {
       courseTransactionId: transactionId,
 
       transactionId,
-      adminApproved: false,
+      adminApproved: false, // admin will verify
     });
 
     res.json({
-      message: "Paid registration successful. Waiting for admin approval.",
+      message: "Payment submitted. Waiting for admin approval.",
+      status: "WAITING",
     });
   } catch (err) {
     console.error(err);
@@ -55,7 +56,9 @@ router.post("/unpaid", auth, async (req, res) => {
     const { batchId, transactionId } = req.body;
 
     if (!batchId || !transactionId) {
-      return res.status(400).json({ message: "BatchId & transactionId required" });
+      return res
+        .status(400)
+        .json({ message: "BatchId & transactionId required" });
     }
 
     const existing = await Registration.findOne({
@@ -72,7 +75,7 @@ router.post("/unpaid", auth, async (req, res) => {
       batchId,
       paymentType: "unpaid",
 
-      registrationFeePaid: false, // admin will verify
+      registrationFeePaid: true, // ₹200 paid
       registrationTransactionId: transactionId,
 
       courseFeePaid: false,
@@ -82,7 +85,7 @@ router.post("/unpaid", auth, async (req, res) => {
     });
 
     res.json({
-      message: "Registration fee submitted. Waiting for admin approval.",
+      message: "Registration fee paid. Waiting for admin approval.",
       status: "WAITING",
     });
   } catch (err) {
@@ -109,8 +112,14 @@ router.get("/status/:batchId", auth, async (req, res) => {
       return res.json({ status: "WAITING" });
     }
 
+    // Paid user – fully approved
+    if (reg.paymentType === "paid") {
+      return res.json({ status: "APPROVED" });
+    }
+
+    // Unpaid user – test pending
     if (reg.paymentType === "unpaid" && !reg.testSlot) {
-      return res.json({ status: "APPROVED_WAITING_TEST" });
+      return res.json({ status: "APPROVED" });
     }
 
     if (reg.testSlot) {
@@ -134,6 +143,10 @@ router.post("/test-slot", auth, async (req, res) => {
   try {
     const { batchId, testSlot } = req.body;
 
+    if (!batchId || !testSlot) {
+      return res.status(400).json({ message: "BatchId & testSlot required" });
+    }
+
     const reg = await Registration.findOne({
       userId: req.user._id,
       batchId,
@@ -148,7 +161,10 @@ router.post("/test-slot", auth, async (req, res) => {
     reg.testSlot = testSlot;
     await reg.save();
 
-    res.json({ message: "Test slot booked successfully" });
+    res.json({
+      message: "Test slot booked successfully",
+      status: "TEST_SCHEDULED",
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
