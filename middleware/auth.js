@@ -5,23 +5,27 @@ const protect = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith("Bearer")) {
-      return res.status(401).json({ message: "No token" });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "No token provided" });
     }
 
     const token = authHeader.split(" ")[1];
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    req.user = await User.findById(decoded.id).select("-password");
+    const user = await User.findById(decoded.id).select("-password");
 
-    if (!req.user) {
+    if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
 
+    req.user = user;
+    req.userId = user._id; // 🔥 very important for registration routes
+
     next();
   } catch (err) {
-    res.status(401).json({ message: "Token invalid" });
+    console.error("Auth error:", err.message);
+    return res.status(401).json({ message: "Token invalid or expired" });
   }
 };
 
