@@ -2,44 +2,65 @@ const mongoose = require("mongoose");
 
 const registrationSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    batchId: { type: String, required: true },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
 
-    // ===== Registration Payment =====
-    registrationFeePaid: { type: Boolean, default: false },
-    registrationAmount: { type: Number, default: 200 }, // ₹200 registration
-    registrationTransactionId: { type: String },
+    name: {
+      type: String,
+      required: true,
+    },
 
-    // ===== Course Payment =====
-    courseFeePaid: { type: Boolean, default: false },
-    courseAmount: { type: Number, default: 2000 }, // ₹2000 course
-    courseTransactionId: { type: String },
+    email: {
+      type: String,
+      required: true,
+    },
 
-    // ===== Payment Type =====
-    paymentType: { type: String, enum: ["paid", "unpaid"], required: true },
+    mobile: {
+      type: String,
+      required: true,
+    },
 
-    // ===== Admin Approval =====
-    adminApproved: { type: Boolean, default: false },
+    batchId: {
+      type: String,
+      default: "default123",
+    },
 
-    // ===== Unpaid Flow: Test =====
-    testSlot: Date,
-    testScore: Number,
+    mode: {
+      type: String,
+      enum: ["PAID", "UNPAID"],
+    },
 
-    // ===== General Transaction ID (optional for quick reference) =====
-    transactionId: String,
+    status: {
+      type: String,
+      enum: [
+        "NOT_REGISTERED",
+        "MODE_SELECTED",
+        "WAITING_ADMIN",
+        "ADMIN_APPROVED",
+        "SEAT_CONFIRMED",
+      ],
+      default: "NOT_REGISTERED",
+    },
+
+    adminApproved: {
+      type: Boolean,
+      default: false,
+    },
+
+    registrationTxnId: String,
+    courseTxnId: String,
+
+    testSlot: {
+      date: String,
+      time: String,
+    },
+
+    termsAccepted: Boolean,
   },
   { timestamps: true }
 );
-
-// Virtual to populate user info
-registrationSchema.virtual("userInfo", {
-  ref: "User",
-  localField: "userId",
-  foreignField: "_id",
-  justOne: true,
-});
-
-registrationSchema.set("toJSON", { virtuals: true });
-registrationSchema.set("toObject", { virtuals: true });
 
 module.exports = mongoose.model("Registration", registrationSchema);
