@@ -1,170 +1,156 @@
 const express = require("express");
-const router = express.Router();
 const Registration = require("../models/Registration");
+const User = require("../models/User");
 const auth = require("../middleware/auth");
 
-/* =====================================
-   PAID COURSE REGISTRATION (₹2000)
-===================================== */
-router.post("/", auth, async (req, res) => {
+const router = express.Router();
+
+/* ================= GET STATUS ================= */
+router.get("/status", auth, async (req, res) => {
   try {
-    const { batchId, transactionId } = req.body;
-
-    if (!batchId || !transactionId) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
-
-    const existing = await Registration.findOne({
-      userId: req.user._id,
-      batchId,
-    });
-
-    if (existing) {
-      return res.status(400).json({ message: "Already registered" });
-    }
-
-    await Registration.create({
-      userId: req.user._id,
-      batchId,
-      paymentType: "paid",
-
-      registrationFeePaid: true,
-      courseFeePaid: true,
-
-      registrationTransactionId: transactionId,
-      courseTransactionId: transactionId,
-
-      transactionId,
-      adminApproved: false, // admin will verify
-    });
-
-    res.json({
-      message: "Payment submitted. Waiting for admin approval.",
-      status: "WAITING",
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-/* =====================================
-   UNPAID REGISTRATION (₹200 REG FEE)
-===================================== */
-router.post("/unpaid", auth, async (req, res) => {
-  try {
-    const { batchId, transactionId } = req.body;
-
-    if (!batchId || !transactionId) {
-      return res
-        .status(400)
-        .json({ message: "BatchId & transactionId required" });
-    }
-
-    const existing = await Registration.findOne({
-      userId: req.user._id,
-      batchId,
-    });
-
-    if (existing) {
-      return res.status(400).json({ message: "Already registered" });
-    }
-
-    await Registration.create({
-      userId: req.user._id,
-      batchId,
-      paymentType: "unpaid",
-
-      registrationFeePaid: true, // ₹200 paid
-      registrationTransactionId: transactionId,
-
-      courseFeePaid: false,
-      adminApproved: false,
-
-      transactionId,
-    });
-
-    res.json({
-      message: "Registration fee paid. Waiting for admin approval.",
-      status: "WAITING",
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-/* =====================================
-   CHECK REGISTRATION STATUS
-===================================== */
-router.get("/status/:batchId", auth, async (req, res) => {
-  try {
-    const reg = await Registration.findOne({
-      userId: req.user._id,
-      batchId: req.params.batchId,
-    });
+    let reg = await Registration.findOne({ userId: req.userId });
 
     if (!reg) {
-      return res.json({ status: "NOT_REGISTERED" });
-    }
+      const user = await User.findById(req.userId).select("-password");
 
-    if (!reg.adminApproved) {
-      return res.json({ status: "WAITING" });
-    }
-
-    // Paid user – fully approved
-    if (reg.paymentType === "paid") {
-      return res.json({ status: "APPROVED" });
-    }
-
-    // Unpaid user – test pending
-    if (reg.paymentType === "unpaid" && !reg.testSlot) {
-      return res.json({ status: "APPROVED" });
-    }
-
-    if (reg.testSlot) {
-      return res.json({
-        status: "TEST_SCHEDULED",
-        testSlot: reg.testSlot,
+      reg = await Registration.create({
+        userId: req.userId,
+        name: user.name,
+        email: user.email,
+        mobile: user.mobile,
+        adminApproved: false,
       });
     }
 
-    res.json({ status: "UNKNOWN" });
+    res.json({
+      status: reg.status,
+      mode: reg.mode,
+      adminApproved: reg.adminApproved,
+      name: reg.name,
+      email: reg.email,
+      mobile: reg.mobile,
+      testSlot: reg.testSlot || null,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-/* =====================================
-   SET TEST SLOT (UNPAID FLOW)
-===================================== */
+/* ================= SELECT MODE ================= */
+router.post("/select-mode", auth, async (req, res) => {
+  try {
+    const { batchId, mode, termsAccepted } = req.body;
+
+    if (!termsAccepted)
+      return res.status(400).json({ message: "Terms not accepted" });
+
+    const user = await User.findById(req.userId).select("-password");
+
+    const reg = await Registration.findOneAndUpdate(
+      { userId: req.userId },
+      {
+        batchId,
+        mode,
+        status: "MODE_SELECTED",
+        termsAccepted,
+        name: user.name,
+        email: user.email,
+        mobile: user.mobile,
+        adminApproved: false,
+      },
+      { new: true, upsert: true }
+    );
+
+    res.json({ message: "Mode selected", reg });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+/* ================= REGISTRATION PAYMENT ================= */
+router.post("/registration-pay", auth, async (req, res) => {
+  try {
+    const { transactionId } = req.body;
+
+    if (!transactionId)
+      return res.status(400).json({ message: "Transaction ID required" });
+
+    const reg = await Registration.findOneAndUpdate(
+      { userId: req.userId },
+      {
+        registrationTxnId: transactionId,
+        status: "WAITING_ADMIN",
+        adminApproved: false,
+      },
+      { new: true }
+    );
+
+    res.json({ message: "Registration payment submitted", reg });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+/* ================= ADMIN APPROVAL ================= */
+router.post("/admin-approve/:userId", async (req, res) => {
+  try {
+    const reg = await Registration.findOneAndUpdate(
+      { userId: req.params.userId },
+      { adminApproved: true, status: "ADMIN_APPROVED" },
+      { new: true }
+    );
+
+    if (!reg) return res.status(404).json({ message: "User not found" });
+
+    res.json({ message: "User approved by admin", reg });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+/* ================= TEST SLOT ================= */
 router.post("/test-slot", auth, async (req, res) => {
   try {
-    const { batchId, testSlot } = req.body;
+    const { date, time } = req.body;
 
-    if (!batchId || !testSlot) {
-      return res.status(400).json({ message: "BatchId & testSlot required" });
-    }
+    if (!date || !time)
+      return res.status(400).json({ message: "Date and time required" });
 
-    const reg = await Registration.findOne({
-      userId: req.user._id,
-      batchId,
-      paymentType: "unpaid",
-      adminApproved: true,
-    });
+    const reg = await Registration.findOneAndUpdate(
+      { userId: req.userId },
+      { testSlot: { date, time, started: false }, status: "SEAT_CONFIRMED" },
+      { new: true }
+    );
 
-    if (!reg) {
-      return res.status(400).json({ message: "Not eligible for test" });
-    }
+    res.json({ message: "Test slot saved", reg });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
-    reg.testSlot = testSlot;
-    await reg.save();
+/* ================= COURSE PAYMENT ================= */
+router.post("/course-pay", auth, async (req, res) => {
+  try {
+    const { transactionId } = req.body;
 
-    res.json({
-      message: "Test slot booked successfully",
-      status: "TEST_SCHEDULED",
-    });
+    if (!transactionId)
+      return res.status(400).json({ message: "Transaction ID required" });
+
+    const reg = await Registration.findOneAndUpdate(
+      { userId: req.userId },
+      {
+        courseTxnId: transactionId,
+        status: "SEAT_CONFIRMED",
+      },
+      { new: true }
+    );
+
+    res.json({ message: "Seat confirmed", reg });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
