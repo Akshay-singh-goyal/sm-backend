@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { createRequire } from "module";
-
+import newsletterRoutes from "./routes/newsletter.js";
 const require = createRequire(import.meta.url);
 
 const connectDB = require("./config/db.js");
@@ -30,6 +30,7 @@ connectDB();
 app.use("/api/auth", authRoutes);
 app.use("/api/register", registerRoutes);
 app.use("/api", contactRoutes);
+app.use("/api/newsletter", newsletterRoutes);
 
 /* ===== Health Check ===== */
 app.get("/", (req, res) => {
