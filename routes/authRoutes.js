@@ -27,7 +27,7 @@ router.post("/register", async (req, res) => {
       name: name.trim(),
       email: normalizedEmail,
       mobile,
-      password, // pre-save middleware will hash
+      password, // pre-save middleware will hash the password
     });
 
     res.status(201).json({
@@ -37,6 +37,7 @@ router.post("/register", async (req, res) => {
         name: user.name,
         email: user.email,
         mobile: user.mobile,
+        role: user.role,
       },
     });
   } catch (err) {
@@ -60,7 +61,7 @@ router.post("/login", async (req, res) => {
 
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-    // Account lock
+    // Check account lock
     if (user.lockUntil && user.lockUntil > Date.now()) {
       return res.status(403).json({ message: "Account locked. Try later." });
     }
@@ -69,18 +70,27 @@ router.post("/login", async (req, res) => {
     if (!isMatch) {
       user.loginAttempts = (user.loginAttempts || 0) + 1;
       if (user.loginAttempts >= 5) {
-        user.lockUntil = Date.now() + 30 * 60 * 1000; // 30 mins lock
+        user.lockUntil = Date.now() + 30 * 60 * 1000; // lock for 30 mins
       }
       await user.save();
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // Reset attempts
+    // Reset login attempts on successful login
     user.loginAttempts = 0;
     user.lockUntil = undefined;
 
-    const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "15m" });
-    const refreshToken = jwt.sign({ id: user._id }, process.env.REFRESH_SECRET, { expiresIn: "7d" });
+    // Generate tokens
+    const accessToken = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" }
+    );
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      process.env.REFRESH_SECRET,
+      { expiresIn: "7d" }
+    );
 
     user.refreshToken = refreshToken;
     await user.save();
@@ -115,7 +125,11 @@ router.post("/refresh-token", async (req, res) => {
     jwt.verify(refreshToken, process.env.REFRESH_SECRET, (err) => {
       if (err) return res.status(403).json({ message: "Refresh token expired" });
 
-      const newAccessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "15m" });
+      const newAccessToken = jwt.sign(
+        { id: user._id, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: "15m" }
+      );
       res.json({ accessToken: newAccessToken });
     });
   } catch (err) {
