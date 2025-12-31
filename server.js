@@ -3,13 +3,13 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { createRequire } from "module";
-import newsletterRoutes from "./routes/newsletter.js";
 const require = createRequire(import.meta.url);
 
 const connectDB = require("./config/db.js");
 const authRoutes = require("./routes/authRoutes.js");
 const registerRoutes = require("./routes/registerRoutes");
 const contactRoutes = require("./routes/contactRoutes");
+const newsletterRoutes = require("./routes/newsletterRoutes");
 
 dotenv.config();
 
