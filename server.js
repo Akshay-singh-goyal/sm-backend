@@ -9,6 +9,7 @@ const require = createRequire(import.meta.url);
 const connectDB = require("./config/db.js");
 const authRoutes = require("./routes/authRoutes.js");
 const registerRoutes = require("./routes/registerRoutes");
+const contactRoutes = require("./routes/contactRoutes");
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ connectDB();
 /* ===== Routes ===== */
 app.use("/api/auth", authRoutes);
 app.use("/api/register", registerRoutes);
+app.use("/api", contactRoutes);
 
 /* ===== Health Check ===== */
 app.get("/", (req, res) => {
