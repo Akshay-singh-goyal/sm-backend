@@ -1,4 +1,3 @@
-// routes/adminRoutes.js
 import express from "express";
 import User from "../models/User.js";
 import Registration from "../models/Registration.js";
@@ -7,6 +6,16 @@ import protect from "../middleware/auth.js"; // JWT auth
 import isAdmin from "../middleware/adminMiddleware.js"; // Admin-only
 
 const router = express.Router();
+
+/**
+ * Helper to safely populate if the field exists in schema
+ */
+const safePopulate = (query, field, select) => {
+  if (User.schema.path(field)) {
+    query = query.populate(field, select);
+  }
+  return query;
+};
 
 /**
  * @desc    Get all users with optional pagination & search
@@ -24,26 +33,22 @@ router.get("/users", protect, isAdmin, async (req, res) => {
       ],
     };
 
-    const users = await User.find(query)
+    let userQuery = User.find(query)
       .select("-password -refreshToken")
-      .populate("completedCourses", "title")
-      .populate("purchasedBooks", "title")
-      .populate("wishlist", "title")
-      .populate("paymentHistory", "-sensitiveInfo")
       .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
+      .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
       .lean();
 
+    // Safe populates
+    ["completedCourses", "purchasedBooks", "wishlist", "paymentHistory"].forEach((field) => {
+      userQuery = safePopulate(userQuery, field, "title");
+    });
+
+    const users = await userQuery;
     const total = await User.countDocuments(query);
 
-    res.status(200).json({
-      success: true,
-      total,
-      page: Number(page),
-      limit: Number(limit),
-      users,
-    });
+    res.status(200).json({ success: true, total, page: Number(page), limit: Number(limit), users });
   } catch (error) {
     console.error("Error fetching users:", error);
     res.status(500).json({ success: false, message: "Failed to fetch users" });
@@ -57,9 +62,7 @@ router.get("/users", protect, isAdmin, async (req, res) => {
  */
 router.get("/admins", protect, isAdmin, async (req, res) => {
   try {
-    const admins = await User.find({ role: "admin" })
-      .select("-password -refreshToken")
-      .lean();
+    const admins = await User.find({ role: "admin" }).select("-password -refreshToken").lean();
     res.status(200).json({ success: true, admins });
   } catch (error) {
     console.error("Error fetching admins:", error);
@@ -115,11 +118,7 @@ router.put("/users/block/:id", protect, isAdmin, async (req, res) => {
     user.isBlocked = isBlocked;
     await user.save();
 
-    res.status(200).json({
-      success: true,
-      message: `User ${isBlocked ? "blocked" : "unblocked"} successfully`,
-      user,
-    });
+    res.status(200).json({ success: true, message: `User ${isBlocked ? "blocked" : "unblocked"} successfully`, user });
   } catch (error) {
     console.error("Error blocking/unblocking user:", error);
     res.status(500).json({ success: false, message: "Failed to update block status" });
