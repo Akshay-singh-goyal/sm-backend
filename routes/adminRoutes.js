@@ -1,116 +1,107 @@
+// routes/adminRoutes.js
 import express from "express";
 import User from "../models/User.js";
 import Registration from "../models/Registration.js";
 import Newsletter from "../models/Newsletter.js";
-import protect from "../middleware/auth.js"; // JWT auth
-import isAdmin from "../middleware/adminMiddleware.js"; // Admin-only
+import protect from "../middleware/auth.js";
+import isAdmin from "../middleware/adminMiddleware.js";
 
 const router = express.Router();
 
 /**
- * Helper to safely populate if the field exists in schema
- */
-const safePopulate = (query, field, select) => {
-  if (User.schema.path(field)) {
-    query = query.populate(field, select);
-  }
-  return query;
-};
-
-/**
- * @desc    Get all users with optional pagination & search
- * @route   GET /api/admin/users
- * @access  Admin
+ * GET /api/admin/users
+ * Safe users list (NO populate ❌)
  */
 router.get("/users", protect, isAdmin, async (req, res) => {
   try {
     const { page = 1, limit = 50, search = "" } = req.query;
 
-    const query = {
-      $or: [
-        { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-      ],
-    };
+    const filter = search
+      ? {
+          $or: [
+            { name: { $regex: search, $options: "i" } },
+            { email: { $regex: search, $options: "i" } },
+          ],
+        }
+      : {};
 
-    let userQuery = User.find(query)
-      .select("-password -refreshToken")
+    const users = await User.find(filter)
+      .select("name email role isBlocked createdAt")
       .sort({ createdAt: -1 })
-      .skip((Number(page) - 1) * Number(limit))
+      .skip((page - 1) * limit)
       .limit(Number(limit))
       .lean();
 
-    // Safe populates
-    ["completedCourses", "purchasedBooks", "wishlist", "paymentHistory"].forEach((field) => {
-      userQuery = safePopulate(userQuery, field, "title");
+    const total = await User.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      total,
+      users,
     });
-
-    const users = await userQuery;
-    const total = await User.countDocuments(query);
-
-    res.status(200).json({ success: true, total, page: Number(page), limit: Number(limit), users });
   } catch (error) {
-    console.error("Error fetching users:", error);
-    res.status(500).json({ success: false, message: "Failed to fetch users" });
+    console.error("ADMIN USERS ERROR:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch users",
+    });
   }
 });
 
 /**
- * @desc    Get all admins
- * @route   GET /api/admin/admins
- * @access  Admin
+ * GET /api/admin/admins
  */
 router.get("/admins", protect, isAdmin, async (req, res) => {
   try {
-    const admins = await User.find({ role: "admin" }).select("-password -refreshToken").lean();
+    const admins = await User.find({ role: "admin" })
+      .select("name email role")
+      .lean();
+
     res.status(200).json({ success: true, admins });
   } catch (error) {
-    console.error("Error fetching admins:", error);
+    console.error("ADMINS ERROR:", error);
     res.status(500).json({ success: false, message: "Failed to fetch admins" });
   }
 });
 
 /**
- * @desc    Get all registrations
- * @route   GET /api/admin/registrations
- * @access  Admin
+ * GET /api/admin/registrations
  */
 router.get("/registrations", protect, isAdmin, async (req, res) => {
   try {
-    const registrations = await Registration.find().sort({ createdAt: -1 }).lean();
+    const registrations = await Registration.find()
+      .sort({ createdAt: -1 })
+      .lean();
+
     res.status(200).json({ success: true, registrations });
   } catch (error) {
-    console.error("Error fetching registrations:", error);
+    console.error("REGISTRATIONS ERROR:", error);
     res.status(500).json({ success: false, message: "Failed to fetch registrations" });
   }
 });
 
 /**
- * @desc    Get all newsletter subscribers
- * @route   GET /api/admin/newsletter
- * @access  Admin
+ * GET /api/admin/newsletter
  */
 router.get("/newsletter", protect, isAdmin, async (req, res) => {
   try {
-    const subscribers = await Newsletter.find().sort({ createdAt: -1 }).lean();
+    const subscribers = await Newsletter.find()
+      .sort({ createdAt: -1 })
+      .lean();
+
     res.status(200).json({ success: true, subscribers });
   } catch (error) {
-    console.error("Error fetching newsletter:", error);
+    console.error("NEWSLETTER ERROR:", error);
     res.status(500).json({ success: false, message: "Failed to fetch newsletter" });
   }
 });
 
 /**
- * @desc    Block or unblock a user
- * @route   PUT /api/admin/users/block/:id
- * @access  Admin
+ * PUT /api/admin/users/block/:id
  */
 router.put("/users/block/:id", protect, isAdmin, async (req, res) => {
   try {
     const { isBlocked } = req.body;
-    if (typeof isBlocked !== "boolean") {
-      return res.status(400).json({ success: false, message: "isBlocked must be boolean" });
-    }
 
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
@@ -118,21 +109,23 @@ router.put("/users/block/:id", protect, isAdmin, async (req, res) => {
     user.isBlocked = isBlocked;
     await user.save();
 
-    res.status(200).json({ success: true, message: `User ${isBlocked ? "blocked" : "unblocked"} successfully`, user });
+    res.status(200).json({
+      success: true,
+      message: "User status updated",
+    });
   } catch (error) {
-    console.error("Error blocking/unblocking user:", error);
-    res.status(500).json({ success: false, message: "Failed to update block status" });
+    console.error("BLOCK USER ERROR:", error);
+    res.status(500).json({ success: false, message: "Failed to update user" });
   }
 });
 
 /**
- * @desc    Update user role
- * @route   PUT /api/admin/users/role/:id
- * @access  Admin
+ * PUT /api/admin/users/role/:id
  */
 router.put("/users/role/:id", protect, isAdmin, async (req, res) => {
   try {
     const { role } = req.body;
+
     if (!["student", "teacher", "admin"].includes(role)) {
       return res.status(400).json({ success: false, message: "Invalid role" });
     }
@@ -143,17 +136,15 @@ router.put("/users/role/:id", protect, isAdmin, async (req, res) => {
     user.role = role;
     await user.save();
 
-    res.status(200).json({ success: true, message: "Role updated successfully", user });
+    res.status(200).json({ success: true, message: "Role updated" });
   } catch (error) {
-    console.error("Error updating role:", error);
+    console.error("ROLE UPDATE ERROR:", error);
     res.status(500).json({ success: false, message: "Failed to update role" });
   }
 });
 
 /**
- * @desc    Delete a user
- * @route   DELETE /api/admin/users/:id
- * @access  Admin
+ * DELETE /api/admin/users/:id
  */
 router.delete("/users/:id", protect, isAdmin, async (req, res) => {
   try {
@@ -161,9 +152,9 @@ router.delete("/users/:id", protect, isAdmin, async (req, res) => {
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     await user.deleteOne();
-    res.status(200).json({ success: true, message: "User deleted successfully" });
+    res.status(200).json({ success: true, message: "User deleted" });
   } catch (error) {
-    console.error("Error deleting user:", error);
+    console.error("DELETE USER ERROR:", error);
     res.status(500).json({ success: false, message: "Failed to delete user" });
   }
 });
