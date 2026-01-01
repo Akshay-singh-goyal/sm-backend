@@ -28,6 +28,7 @@ const authRoutes = require("./routes/authRoutes.js");
 const registerRoutes = require("./routes/registerRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const newsletterRoutes = require("./routes/newsletterRoutes");
+const adminRoutes = require("./routes/adminRegistration.routes");
 import adminRoutes from "./routes/adminRoutes.js";
 
 app.use("/api/auth", authRoutes);
@@ -35,6 +36,7 @@ app.use("/api/register", registerRoutes);
 app.use("/api", contactRoutes);
 app.use("/api/newsletter", newsletterRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/admin", adminRoutes)
 
 /* ===== Health Check ===== */
 app.get("/", (req, res) => {
