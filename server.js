@@ -5,17 +5,10 @@ import dotenv from "dotenv";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 
-const connectDB = require("./config/db.js");
-const authRoutes = require("./routes/authRoutes.js");
-const registerRoutes = require("./routes/registerRoutes");
-const contactRoutes = require("./routes/contactRoutes");
-const newsletterRoutes = require("./routes/newsletterRoutes");
-import adminRoutes from "./routes/admin.js"; // ← make sure filename matches
-
-app.use("/api/admin", adminRoutes); 
-
+// Load environment variables
 dotenv.config();
 
+// Initialize express app
 const app = express();
 
 /* ===== Middleware ===== */
@@ -27,13 +20,21 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /* ===== Database ===== */
+const connectDB = require("./config/db.js");
 connectDB();
 
 /* ===== Routes ===== */
+const authRoutes = require("./routes/authRoutes.js");
+const registerRoutes = require("./routes/registerRoutes");
+const contactRoutes = require("./routes/contactRoutes");
+const newsletterRoutes = require("./routes/newsletterRoutes");
+import adminRoutes from "./routes/admin.js"; // ES Module import
+
 app.use("/api/auth", authRoutes);
 app.use("/api/register", registerRoutes);
 app.use("/api", contactRoutes);
 app.use("/api/newsletter", newsletterRoutes);
+app.use("/api/admin", admin); // Admin routes
 
 /* ===== Health Check ===== */
 app.get("/", (req, res) => {
