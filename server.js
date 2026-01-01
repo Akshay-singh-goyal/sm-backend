@@ -28,7 +28,7 @@ const authRoutes = require("./routes/authRoutes.js");
 const registerRoutes = require("./routes/registerRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const newsletterRoutes = require("./routes/newsletterRoutes");
-const adminRoutes = require("./routes/adminRegistration.routes");
+const adminRoutes = require("./routes/adminRoutes");
 import adminRegistrationRoutes from "./routes/adminRegistrationRoutes.js";
 
 app.use("/api/auth", authRoutes);
