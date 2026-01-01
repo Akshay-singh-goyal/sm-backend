@@ -1,17 +1,18 @@
 // routes/admin.js
 import express from "express";
 import User from "../models/User.js";
-import Registration from "../models/Registration.js"; // create this model
-import Newsletter from "../models/Newsletter.js"; // create this model
-import protect from "../middleware/auth.js";
-import isAdmin from "../middleware/adminMiddleware.js";
+import Registration from "../models/Registration.js";
+import Newsletter from "../models/Newsletter.js";
+import protect from "../middleware/auth.js"; // JWT auth middleware
+import isAdmin from "../middleware/adminMiddleware.js"; // Admin-only middleware
 
 const router = express.Router();
 
-/* ===== GET ALL USERS ===== */
+/* ===== GET ALL USERS (full details) ===== */
 router.get("/users", protect, isAdmin, async (req, res) => {
   try {
-    const users = await User.find().select("-password");
+    // Exclude password, sort by newest first
+    const users = await User.find().select("-password").sort({ createdAt: -1 });
     res.status(200).json(users);
   } catch (err) {
     console.error("Get users error:", err);
@@ -64,6 +65,7 @@ router.put("/block/:id", protect, isAdmin, async (req, res) => {
 
     res.status(200).json({
       message: `User ${isBlocked ? "blocked" : "unblocked"} successfully`,
+      user, // returning full updated user
     });
   } catch (err) {
     console.error("Block user error:", err);
@@ -86,7 +88,10 @@ router.put("/role/:id", protect, isAdmin, async (req, res) => {
     user.role = role;
     await user.save();
 
-    res.status(200).json({ message: "Role updated successfully" });
+    res.status(200).json({
+      message: "Role updated successfully",
+      user, // returning updated user
+    });
   } catch (err) {
     console.error("Change role error:", err);
     res.status(500).json({ message: "Failed to update role" });
