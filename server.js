@@ -10,8 +10,9 @@ const authRoutes = require("./routes/authRoutes.js");
 const registerRoutes = require("./routes/registerRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const newsletterRoutes = require("./routes/newsletterRoutes");
+import adminRoutes from "./routes/admin.js"; // ← make sure filename matches
 
-app.use("/api/admin", require("./routes/admin")); 
+app.use("/api/admin", adminRoutes); 
 
 dotenv.config();
 
