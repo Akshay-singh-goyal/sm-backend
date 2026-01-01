@@ -1,15 +1,14 @@
 // routes/admin.js
 import express from "express";
 import User from "../models/User.js";
+import Registration from "../models/Registration.js"; // create this model
+import Newsletter from "../models/Newsletter.js"; // create this model
 import protect from "../middleware/auth.js";
 import isAdmin from "../middleware/adminMiddleware.js";
 
 const router = express.Router();
 
-/**
- * GET all users
- * GET /api/admin/users
- */
+/* ===== GET ALL USERS ===== */
 router.get("/users", protect, isAdmin, async (req, res) => {
   try {
     const users = await User.find().select("-password");
@@ -20,10 +19,40 @@ router.get("/users", protect, isAdmin, async (req, res) => {
   }
 });
 
-/**
- * Block / Unblock user
- * PUT /api/admin/block/:id
- */
+/* ===== GET ALL ADMINS ===== */
+router.get("/admins", protect, isAdmin, async (req, res) => {
+  try {
+    const admins = await User.find({ role: "admin" }).select("-password");
+    res.status(200).json(admins);
+  } catch (err) {
+    console.error("Get admins error:", err);
+    res.status(500).json({ message: "Failed to fetch admins" });
+  }
+});
+
+/* ===== GET REGISTRATIONS ===== */
+router.get("/registrations", protect, isAdmin, async (req, res) => {
+  try {
+    const regs = await Registration.find();
+    res.status(200).json(regs);
+  } catch (err) {
+    console.error("Get registrations error:", err);
+    res.status(500).json({ message: "Failed to fetch registrations" });
+  }
+});
+
+/* ===== GET NEWSLETTER SUBSCRIBERS ===== */
+router.get("/newsletter", protect, isAdmin, async (req, res) => {
+  try {
+    const subscribers = await Newsletter.find();
+    res.status(200).json(subscribers);
+  } catch (err) {
+    console.error("Get newsletter error:", err);
+    res.status(500).json({ message: "Failed to fetch newsletter" });
+  }
+});
+
+/* ===== BLOCK / UNBLOCK USER ===== */
 router.put("/block/:id", protect, isAdmin, async (req, res) => {
   try {
     const { isBlocked } = req.body;
@@ -42,10 +71,7 @@ router.put("/block/:id", protect, isAdmin, async (req, res) => {
   }
 });
 
-/**
- * Change user role
- * PUT /api/admin/role/:id
- */
+/* ===== CHANGE USER ROLE ===== */
 router.put("/role/:id", protect, isAdmin, async (req, res) => {
   try {
     const { role } = req.body;
@@ -67,10 +93,7 @@ router.put("/role/:id", protect, isAdmin, async (req, res) => {
   }
 });
 
-/**
- * Delete user
- * DELETE /api/admin/users/:id
- */
+/* ===== DELETE USER ===== */
 router.delete("/users/:id", protect, isAdmin, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
