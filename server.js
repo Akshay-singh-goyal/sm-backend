@@ -29,14 +29,14 @@ const registerRoutes = require("./routes/registerRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const newsletterRoutes = require("./routes/newsletterRoutes");
 const adminRoutes = require("./routes/adminRoutes");
-import adminRegistrationRoutes from "./routes/adminRegistrationRoutes.js";
+
 
 app.use("/api/auth", authRoutes);
 app.use("/api/register", registerRoutes);
 app.use("/api", contactRoutes);
 app.use("/api/newsletter", newsletterRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api/admin/registrations", adminRegistrationRoutes); // registrations
+
 
 /* ===== Health Check ===== */
 app.get("/", (req, res) => {
