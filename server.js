@@ -28,13 +28,13 @@ const authRoutes = require("./routes/authRoutes.js");
 const registerRoutes = require("./routes/registerRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const newsletterRoutes = require("./routes/newsletterRoutes");
-import adminRoutes from "./routes/admin.js"; // ES Module import
+const adminRoutes = require("./routes/adminRoutes"); 
 
 app.use("/api/auth", authRoutes);
 app.use("/api/register", registerRoutes);
 app.use("/api", contactRoutes);
 app.use("/api/newsletter", newsletterRoutes);
-app.use("/api/admin", admin); // Admin routes
+app.use("/api/admin", adminRoutes); // Admin routes
 
 /* ===== Health Check ===== */
 app.get("/", (req, res) => {
