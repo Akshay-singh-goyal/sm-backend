@@ -29,7 +29,7 @@ const registerRoutes = require("./routes/registerRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const newsletterRoutes = require("./routes/newsletterRoutes");
 const adminRoutes = require("./routes/adminRegistration.routes");
-import adminRoutes from "./routes/adminRegistrationRoutes.js.js";
+import adminRegistrationRoutes from "./routes/adminRegistrationRoutes.js.js";
 
 app.use("/api/auth", authRoutes);
 app.use("/api/register", registerRoutes);
