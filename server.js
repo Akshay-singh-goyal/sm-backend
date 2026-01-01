@@ -11,6 +11,8 @@ const registerRoutes = require("./routes/registerRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const newsletterRoutes = require("./routes/newsletterRoutes");
 
+app.use("/api/admin", require("./routes/adminRoutes"));
+
 dotenv.config();
 
 const app = express();
