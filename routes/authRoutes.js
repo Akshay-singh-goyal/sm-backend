@@ -1,7 +1,8 @@
-const express = require("express");
-const User = require("../models/User");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+// routes/authRoutes.js
+import express from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
 const router = express.Router();
 
@@ -9,6 +10,7 @@ const router = express.Router();
 router.post("/register", async (req, res) => {
   try {
     const { name, email, mobile, password } = req.body;
+
     if (!name || !email || !mobile || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -27,7 +29,7 @@ router.post("/register", async (req, res) => {
       name: name.trim(),
       email: normalizedEmail,
       mobile,
-      password, // pre-save middleware will hash the password
+      password, // hashed via pre-save middleware
     });
 
     res.status(201).json({
@@ -40,8 +42,8 @@ router.post("/register", async (req, res) => {
         role: user.role,
       },
     });
-  } catch (err) {
-    console.error("Register Error:", err);
+  } catch (error) {
+    console.error("Register Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -52,40 +54,48 @@ router.post("/login", async (req, res) => {
     const { email, mobile, password } = req.body;
 
     if ((!email && !mobile) || !password) {
-      return res.status(400).json({ message: "Email or Mobile and Password required" });
+      return res.status(400).json({
+        message: "Email or Mobile and Password required",
+      });
     }
 
     const user = email
       ? await User.findOne({ email: email.trim().toLowerCase() })
       : await User.findOne({ mobile });
 
-    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
 
-    // Check account lock
+    /* Account lock check */
     if (user.lockUntil && user.lockUntil > Date.now()) {
-      return res.status(403).json({ message: "Account locked. Try later." });
+      return res.status(403).json({
+        message: "Account locked. Try later.",
+      });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       user.loginAttempts = (user.loginAttempts || 0) + 1;
+
       if (user.loginAttempts >= 5) {
-        user.lockUntil = Date.now() + 30 * 60 * 1000; // lock for 30 mins
+        user.lockUntil = Date.now() + 30 * 60 * 1000; // 30 mins
       }
+
       await user.save();
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // Reset login attempts on successful login
+    /* Reset attempts on success */
     user.loginAttempts = 0;
     user.lockUntil = undefined;
 
-    // Generate tokens
     const accessToken = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "15m" }
     );
+
     const refreshToken = jwt.sign(
       { id: user._id },
       process.env.REFRESH_SECRET,
@@ -107,8 +117,8 @@ router.post("/login", async (req, res) => {
         role: user.role,
       },
     });
-  } catch (err) {
-    console.error("Login Error:", err);
+  } catch (error) {
+    console.error("Login Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -117,25 +127,33 @@ router.post("/login", async (req, res) => {
 router.post("/refresh-token", async (req, res) => {
   try {
     const { refreshToken } = req.body;
-    if (!refreshToken) return res.status(401).json({ message: "Refresh token required" });
+
+    if (!refreshToken) {
+      return res.status(401).json({ message: "Refresh token required" });
+    }
 
     const user = await User.findOne({ refreshToken });
-    if (!user) return res.status(403).json({ message: "Invalid refresh token" });
+    if (!user) {
+      return res.status(403).json({ message: "Invalid refresh token" });
+    }
 
-    jwt.verify(refreshToken, process.env.REFRESH_SECRET, (err) => {
-      if (err) return res.status(403).json({ message: "Refresh token expired" });
+    jwt.verify(refreshToken, process.env.REFRESH_SECRET, (error) => {
+      if (error) {
+        return res.status(403).json({ message: "Refresh token expired" });
+      }
 
       const newAccessToken = jwt.sign(
         { id: user._id, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: "15m" }
       );
+
       res.json({ accessToken: newAccessToken });
     });
-  } catch (err) {
-    console.error("Refresh Token Error:", err);
+  } catch (error) {
+    console.error("Refresh Token Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-module.exports = router;
+export default router;
