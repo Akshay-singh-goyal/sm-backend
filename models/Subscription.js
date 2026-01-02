@@ -1,5 +1,4 @@
-
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const SubscriptionSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -10,4 +9,5 @@ const SubscriptionSchema = new mongoose.Schema({
   status: { type: String, enum: ['active','cancelled','expired'], default: 'active' }
 });
 
-module.exports = mongoose.model('Subscription', SubscriptionSchema);
+const Subscription = mongoose.model('Subscription', SubscriptionSchema);
+export default Subscription;
