@@ -1,7 +1,7 @@
-const express = require("express");
-const Registration = require("../models/Registration");
-const User = require("../models/User");
-const auth = require("../middleware/auth");
+import express from "express";
+import Registration from "../models/Registration.js";
+import User from "../models/User.js";
+import auth from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -31,8 +31,8 @@ router.get("/status", auth, async (req, res) => {
       mobile: reg.mobile,
       testSlot: reg.testSlot || null,
     });
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error("GET STATUS ERROR:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -42,8 +42,9 @@ router.post("/select-mode", auth, async (req, res) => {
   try {
     const { batchId, mode, termsAccepted } = req.body;
 
-    if (!termsAccepted)
+    if (!termsAccepted) {
       return res.status(400).json({ message: "Terms not accepted" });
+    }
 
     const user = await User.findById(req.userId).select("-password");
 
@@ -63,8 +64,8 @@ router.post("/select-mode", auth, async (req, res) => {
     );
 
     res.json({ message: "Mode selected", reg });
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error("SELECT MODE ERROR:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -74,8 +75,9 @@ router.post("/registration-pay", auth, async (req, res) => {
   try {
     const { transactionId } = req.body;
 
-    if (!transactionId)
+    if (!transactionId) {
       return res.status(400).json({ message: "Transaction ID required" });
+    }
 
     const reg = await Registration.findOneAndUpdate(
       { userId: req.userId },
@@ -88,8 +90,8 @@ router.post("/registration-pay", auth, async (req, res) => {
     );
 
     res.json({ message: "Registration payment submitted", reg });
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error("REGISTRATION PAY ERROR:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -103,11 +105,13 @@ router.post("/admin-approve/:userId", async (req, res) => {
       { new: true }
     );
 
-    if (!reg) return res.status(404).json({ message: "User not found" });
+    if (!reg) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     res.json({ message: "User approved by admin", reg });
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error("ADMIN APPROVE ERROR:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -117,18 +121,22 @@ router.post("/test-slot", auth, async (req, res) => {
   try {
     const { date, time } = req.body;
 
-    if (!date || !time)
+    if (!date || !time) {
       return res.status(400).json({ message: "Date and time required" });
+    }
 
     const reg = await Registration.findOneAndUpdate(
       { userId: req.userId },
-      { testSlot: { date, time, started: false }, status: "SEAT_CONFIRMED" },
+      {
+        testSlot: { date, time, started: false },
+        status: "SEAT_CONFIRMED",
+      },
       { new: true }
     );
 
     res.json({ message: "Test slot saved", reg });
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error("TEST SLOT ERROR:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -138,8 +146,9 @@ router.post("/course-pay", auth, async (req, res) => {
   try {
     const { transactionId } = req.body;
 
-    if (!transactionId)
+    if (!transactionId) {
       return res.status(400).json({ message: "Transaction ID required" });
+    }
 
     const reg = await Registration.findOneAndUpdate(
       { userId: req.userId },
@@ -151,10 +160,10 @@ router.post("/course-pay", auth, async (req, res) => {
     );
 
     res.json({ message: "Seat confirmed", reg });
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error("COURSE PAY ERROR:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-module.exports = router;
+export default router;
