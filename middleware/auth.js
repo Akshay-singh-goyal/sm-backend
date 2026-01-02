@@ -1,5 +1,5 @@
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
 const protect = async (req, res, next) => {
   try {
@@ -23,10 +23,10 @@ const protect = async (req, res, next) => {
     req.userId = user._id; // 🔥 very important for registration routes
 
     next();
-  } catch (err) {
-    console.error("Auth error:", err.message);
+  } catch (error) {
+    console.error("Auth error:", error.message);
     return res.status(401).json({ message: "Token invalid or expired" });
   }
 };
 
-module.exports = protect;
+export default protect;
