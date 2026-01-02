@@ -1,6 +1,6 @@
-const Contact = require("../models/Contact");
+import Contact from "../models/Contact.js";
 
-exports.createContact = async (req, res) => {
+export const createContact = async (req, res) => {
   try {
     const { name, email, category, priority, subject, message } = req.body;
 
@@ -26,7 +26,7 @@ exports.createContact = async (req, res) => {
       data: contact,
     });
   } catch (error) {
-    console.error(error);
+    console.error("CONTACT ERROR:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
