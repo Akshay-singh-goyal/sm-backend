@@ -9,13 +9,21 @@ dotenv.config();
 /* ===== Initialize express app ===== */
 const app = express();
 
-/* ===== Middleware ===== */
+/* ===== CORS FIX (VERY IMPORTANT) ===== */
 app.use(
   cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: [
+      "https://theitwallah.vercel.app", // frontend (production)
+      "http://localhost:3000",          // frontend (local)
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+// 🔥 Preflight request fix
+app.options("*", cors());
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
