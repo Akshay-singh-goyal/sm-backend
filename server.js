@@ -2,41 +2,39 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
 
-// Load environment variables
+/* ===== Load environment variables ===== */
 dotenv.config();
 
-// Initialize express app
+/* ===== Initialize express app ===== */
 const app = express();
 
 /* ===== Middleware ===== */
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-}));
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /* ===== Database ===== */
-const connectDB = require("./config/db.js");
+import connectDB from "./config/db.js";
 connectDB();
 
 /* ===== Routes ===== */
-const authRoutes = require("./routes/authRoutes.js");
-const registerRoutes = require("./routes/registerRoutes");
-const contactRoutes = require("./routes/contactRoutes");
-const newsletterRoutes = require("./routes/newsletterRoutes");
-const adminRoutes = require("./routes/adminRoutes");
-
+import authRoutes from "./routes/authRoutes.js";
+import registerRoutes from "./routes/registerRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
+import newsletterRoutes from "./routes/newsletterRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 app.use("/api/auth", authRoutes);
 app.use("/api/register", registerRoutes);
 app.use("/api", contactRoutes);
 app.use("/api/newsletter", newsletterRoutes);
 app.use("/api/admin", adminRoutes);
-
 
 /* ===== Health Check ===== */
 app.get("/", (req, res) => {
