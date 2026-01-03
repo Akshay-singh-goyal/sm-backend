@@ -9,7 +9,7 @@ const router = express.Router();
 
 /* ======================================================
    GET /api/admin/users
-   - Supports search, pagination
+   - Supports pagination & search
    - Returns all fields needed by frontend
 ====================================================== */
 router.get("/users", protect, isAdmin, async (req, res) => {
@@ -52,7 +52,7 @@ router.get("/users", protect, isAdmin, async (req, res) => {
 
 /* ======================================================
    PUT /api/admin/users/:id/block-toggle
-   - Toggle block / unblock (frontend compatible)
+   - Toggle block / unblock
 ====================================================== */
 router.put("/users/:id/block-toggle", protect, isAdmin, async (req, res) => {
   try {
@@ -83,14 +83,19 @@ router.put("/users/:id/block-toggle", protect, isAdmin, async (req, res) => {
 
 /* ======================================================
    PUT /api/admin/users/:id/role
-   - Role update (frontend compatible)
+   - Frontend role → DB role mapping FIXED
 ====================================================== */
 router.put("/users/:id/role", protect, isAdmin, async (req, res) => {
   try {
     const { role } = req.body;
 
-    // Frontend uses only these roles
-    if (!["user", "admin"].includes(role)) {
+    // Frontend → DB role map
+    const roleMap = {
+      user: "student",
+      admin: "admin",
+    };
+
+    if (!roleMap[role]) {
       return res.status(400).json({
         success: false,
         message: "Invalid role",
@@ -105,13 +110,13 @@ router.put("/users/:id/role", protect, isAdmin, async (req, res) => {
       });
     }
 
-    user.role = role;
+    user.role = roleMap[role];
     await user.save();
 
     res.status(200).json({
       success: true,
       message: "Role updated",
-      role,
+      role: user.role,
     });
   } catch (error) {
     console.error("ROLE UPDATE ERROR:", error);
