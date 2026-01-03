@@ -1,16 +1,21 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
+// Highlight Schema
+const HighlightSchema = new mongoose.Schema({
+  text: { type: String, required: true },
+  color: { type: String, required: true },
+});
+
+// Main User Schema
 const UserSchema = new mongoose.Schema(
   {
-    // Basic Info
     name: { type: String, required: true, trim: true },
 
     email: {
       type: String,
       required: true,
       unique: true,
-      sparse: true,
       lowercase: true,
       trim: true,
     },
@@ -30,7 +35,6 @@ const UserSchema = new mongoose.Schema(
       default: "student",
     },
 
-    // Avatar
     avatar: {
       type: String,
       default: function () {
@@ -38,7 +42,6 @@ const UserSchema = new mongoose.Schema(
       },
     },
 
-    // Learning / Purchases
     completedCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: "Course" }],
     purchasedBooks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Book" }],
     downloadHistory: [
@@ -52,12 +55,21 @@ const UserSchema = new mongoose.Schema(
     wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: "Course" }],
     paymentHistory: [{ type: mongoose.Schema.Types.ObjectId, ref: "Payment" }],
 
-    // Auth & Security
+    // Notes features
+    bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Note" }],
+
+    highlights: {
+      type: Map,
+      of: [HighlightSchema],
+      default: {},
+    },
+
+    // Authentication & security
     refreshToken: { type: String, default: null },
     loginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Number, default: null },
 
-    // Settings
+    // User settings
     settings: {
       notifications: { type: Boolean, default: true },
       darkMode: { type: Boolean, default: false },
@@ -76,10 +88,11 @@ UserSchema.pre("save", async function (next) {
   next();
 });
 
-// Compare password method
+// Method to compare password
 UserSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
+// Export model
 const User = mongoose.models.User || mongoose.model("User", UserSchema);
 export default User;

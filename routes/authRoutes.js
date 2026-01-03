@@ -1,8 +1,9 @@
-// routes/authRoutes.js
+// routes/userRoutes.js
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import protect from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -79,7 +80,7 @@ router.post("/login", async (req, res) => {
       user.loginAttempts = (user.loginAttempts || 0) + 1;
 
       if (user.loginAttempts >= 5) {
-        user.lockUntil = Date.now() + 30 * 60 * 1000; // 30 mins
+        user.lockUntil = Date.now() + 30 * 60 * 1000; // 30 mins lock
       }
 
       await user.save();
@@ -153,6 +154,59 @@ router.post("/refresh-token", async (req, res) => {
   } catch (error) {
     console.error("Refresh Token Error:", error);
     res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+/* ================= GET CURRENT USER ================= */
+router.get("/me", protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id)
+      .select(
+        "-password -refreshToken -loginAttempts -lockUntil -settings" // hide sensitive
+      )
+      .populate("bookmarks", "university branch subject subjectCode topic"); // populate bookmarks
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json(user);
+  } catch (err) {
+    console.error("GET ME ERROR:", err);
+    res.status(500).json({ message: "Failed to fetch user data" });
+  }
+});
+
+/* ================= UPDATE BOOKMARKS ================= */
+router.put("/me/bookmarks", protect, async (req, res) => {
+  try {
+    const { bookmarks } = req.body;
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.bookmarks = bookmarks || [];
+    await user.save();
+
+    res.json({ message: "Bookmarks updated", bookmarks: user.bookmarks });
+  } catch (err) {
+    console.error("BOOKMARK UPDATE ERROR:", err);
+    res.status(500).json({ message: "Failed to update bookmarks" });
+  }
+});
+
+/* ================= UPDATE HIGHLIGHTS ================= */
+router.put("/me/highlights", protect, async (req, res) => {
+  try {
+    const { highlights } = req.body;
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.highlights = highlights || {};
+    await user.save();
+
+    res.json({ message: "Highlights updated", highlights: user.highlights });
+  } catch (err) {
+    console.error("HIGHLIGHT UPDATE ERROR:", err);
+    res.status(500).json({ message: "Failed to update highlights" });
   }
 });
 

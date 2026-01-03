@@ -37,12 +37,19 @@ import registerRoutes from "./routes/registerRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
 import newsletterRoutes from "./routes/newsletterRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import universityRoutes from './routes/university.js';
+import notesRoutes from './routes/notes.js';
+import studyNotesRoutes from "./routes/studyNotesRoutes.js";
+
 
 app.use("/api/auth", authRoutes);
 app.use("/api/register", registerRoutes);
 app.use("/api", contactRoutes);
 app.use("/api/newsletter", newsletterRoutes);
 app.use("/api/admin", adminRoutes);
+app.use('/api/university', universityRoutes);
+app.use('/api/notes', notesRoutes);
+app.use("/api/study-notes", studyNotesRoutes);
 
 /* ===== Health Check ===== */
 app.get("/", (req, res) => {
