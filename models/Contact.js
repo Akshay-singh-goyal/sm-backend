@@ -1,3 +1,4 @@
+// models/Contact.js
 import mongoose from "mongoose";
 
 const contactSchema = new mongoose.Schema(
@@ -28,9 +29,18 @@ const contactSchema = new mongoose.Schema(
     message: {
       type: String,
     },
+    reply: {
+      type: String, // admin reply
+      default: "",
+    },
+    resolved: {
+      type: Boolean, // ticket resolved status
+      default: false,
+    },
   },
-  { timestamps: true }
+  { timestamps: true } // createdAt and updatedAt
 );
 
 const Contact = mongoose.model("Contact", contactSchema);
+
 export default Contact;

@@ -41,6 +41,7 @@ import universityRoutes from './routes/university.js';
 import notesRoutes from './routes/notes.js';
 import studyNotesRoutes from "./routes/studyNotesRoutes.js";
 import adminRegistrationRoutes from "./routes/adminRegistration.js";
+import adminContactsRoutes from "./routes/adminContacts.js";
 
 
 app.use("/api/auth", authRoutes);
@@ -52,6 +53,7 @@ app.use('/api/university', universityRoutes);
 app.use('/api/notes', notesRoutes);
 app.use("/api/study-notes", studyNotesRoutes);
 app.use("/api/admin", adminRegistrationRoutes);
+app.use("/api/admin", adminContactsRoutes);
 
 /* ===== Health Check ===== */
 app.get("/", (req, res) => {
