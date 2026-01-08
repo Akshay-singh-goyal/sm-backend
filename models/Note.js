@@ -5,7 +5,12 @@ const NoteSchema = new mongoose.Schema({
   department: { type: String, required: true },
   branch: { type: String, required: true },
   subjectName: { type: String, required: true },
-  subjectCode: { type: String, required: true },
+  subjectCodes: [
+    {
+      code: String,
+      branch: String,
+      department: String,
+    },
   year: { type: Number, required: true },
   semester: { type: Number, required: true },
   topicName: { type: String, required: true },
