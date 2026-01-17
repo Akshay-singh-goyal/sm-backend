@@ -1,9 +1,17 @@
 import mongoose from "mongoose";
 
-const subscriberSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
-  createdAt: { type: Date, default: Date.now },
-});
+const newsletterSchema = new mongoose.Schema(
+  {
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true
+    }
+  },
+  { timestamps: true }
+);
 
-const Subscriber = mongoose.model("Subscriber", subscriberSchema);
+const Subscriber = mongoose.model("Subscriber", newsletterSchema);
 export default Subscriber;
